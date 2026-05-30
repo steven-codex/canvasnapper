@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "Canva Snapper (Pro Edition)",
+  "version": "1.0.0",
+  "description": "Copy transparent Canva Editor elements directly to clipboard at full resolution.",
+  "permissions": [
+    "activeTab",
+    "contextMenus",
+    "clipboardWrite",
+    "storage",
+    "downloads"
+  ],
+  "host_permissions": [
+    "https://*.canva.com/*",
+    "https://*.canvacdn.com/*",
+    "https://media-public.canva.com/*"
+  ],
+  "action": {
+    "default_popup": "src/popup/index.html"
+  },
+  "background": {
+    "service_worker": "src/background/background.ts",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://*.canva.com/*"],
+      "js": ["src/content/content.ts"],
+      "run_at": "document_end"
+    }
+  ]
+}
