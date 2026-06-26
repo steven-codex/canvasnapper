@@ -8,13 +8,22 @@
     "contextMenus",
     "clipboardWrite",
     "storage",
-    "downloads"
+    "downloads",
+    "identity"
   ],
   "host_permissions": [
     "https://*.canva.com/*",
     "https://*.canvacdn.com/*",
-    "https://media-public.canva.com/*"
+    "https://media-public.canva.com/*",
+    "https://*.cloudfunctions.net/*"
   ],
+  "oauth2": {
+    "client_id": "893475298457-mockclientid.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/userinfo.email",
+      "https://www.googleapis.com/auth/userinfo.profile"
+    ]
+  },
   "action": {
     "default_popup": "src/popup/index.html"
   },

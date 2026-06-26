@@ -568,23 +568,7 @@ function createThumbnail(originalCanvas: HTMLCanvasElement, maxWidth: number): P
 function captureAndCopyImage(imageUrl: string, width: number, height: number, isSvg: boolean) {
   chrome.storage.local.get({ session: null, history: [], autoDownloadFormat: 'none' }, (res: any) => {
     const session = res.session || { tier: 'free' };
-    const history = res.history || [];
     const autoDownloadFormat = res.autoDownloadFormat;
-    
-    if (session.tier === 'free') {
-      const today = new Date().toDateString();
-      const todaySnaps = history.filter((item: any) => new Date(item.timestamp).toDateString() === today).length;
-      
-      if (todaySnaps >= 10) {
-        toast.show("error", "Free limit reached (10/day). Upgrade to Pro!");
-        return;
-      }
-      
-      if (isSvg) {
-        toast.show("error", "SVG Vector export is a Pro feature.");
-        return;
-      }
-    }
 
     logDiagnostic(`Starting capture: ${imageUrl.substring(0, 60)}...`, { width, height, isSvg });
     toast.show("loading", isSvg ? "Snapping vector graphic..." : "Snapping Canva asset...");
@@ -722,45 +706,41 @@ function captureAndCopyImage(imageUrl: string, width: number, height: number, is
     };
   };
 
-  if (imageUrl.startsWith("data:")) {
-    processAndWrite(imageUrl, false);
-  } else {
-    if (isContextValid()) {
-      try {
-        chrome.runtime.sendMessage(
-          { action: "fetch_image_cors", url: imageUrl },
-          (response) => {
-            if (!isContextValid()) return;
-            if (!response || !response.success) {
-              logDiagnostic("Error: CORS fetch proxy failed", response?.error);
-              toast.show("error", "Access Denied by Canva. Failed to fetch image.");
-              return;
-            }
-
-            try {
-              const binaryString = atob(response.base64Data);
-              const len = binaryString.length;
-              const bytes = new Uint8Array(len);
-              for (let i = 0; i < len; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-              }
-              
-              const blob = new Blob([bytes], { type: response.contentType });
-              const objectUrl = URL.createObjectURL(blob);
-              processAndWrite(objectUrl, true);
-            } catch (err: any) {
-              logDiagnostic("Error: Base64 decode failed", err.message || err);
-              toast.show("error", `Decode error: ${err.message || err}`);
-            }
+  if (isContextValid()) {
+    try {
+      chrome.runtime.sendMessage(
+        { action: "fetch_image_cors", url: imageUrl, snapType: isSvg ? 'svg' : 'png' },
+        (response) => {
+          if (!isContextValid()) return;
+          if (!response || !response.success) {
+            logDiagnostic("Error: CORS fetch proxy or credit validation failed", response?.error);
+            toast.show("error", response?.message || "Limit reached. Please upgrade to Pro.");
+            return;
           }
-        );
-      } catch (e) {
-        logDiagnostic("Failed to send fetch_image_cors message (context invalidated)");
-        toast.show("error", "Extension was reloaded. Please refresh Canva to continue.");
-      }
-    } else {
+
+          try {
+            const binaryString = atob(response.base64Data);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            
+            const blob = new Blob([bytes], { type: response.contentType });
+            const objectUrl = URL.createObjectURL(blob);
+            processAndWrite(objectUrl, true);
+          } catch (err: any) {
+            logDiagnostic("Error: Base64 decode failed", err.message || err);
+            toast.show("error", `Decode error: ${err.message || err}`);
+          }
+        }
+      );
+    } catch (e) {
+      logDiagnostic("Failed to send fetch_image_cors message (context invalidated)");
       toast.show("error", "Extension was reloaded. Please refresh Canva to continue.");
     }
+  } else {
+    toast.show("error", "Extension was reloaded. Please refresh Canva to continue.");
   }
   }); // close chrome.storage.local.get
 }

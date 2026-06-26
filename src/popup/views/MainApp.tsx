@@ -87,6 +87,26 @@ export const MainApp: React.FC = () => {
     await logout();
   };
 
+  const handleBuyCredits = () => {
+    chrome.runtime.sendMessage({ action: "create_polar_checkout", type: "credits" }, (res) => {
+      if (res && res.success && res.url) {
+        window.open(res.url, "_blank");
+      } else {
+        showToast("Polar checkout failed", "error");
+      }
+    });
+  };
+
+  const handleUpgradeToPro = () => {
+    chrome.runtime.sendMessage({ action: "create_polar_checkout", type: "subscription" }, (res) => {
+      if (res && res.success && res.url) {
+        window.open(res.url, "_blank");
+      } else {
+        showToast("Polar checkout failed", "error");
+      }
+    });
+  };
+
   return (
     <div className="relative w-full flex flex-col p-5 overflow-hidden select-none font-sans text-[var(--color-text-body)] bg-[var(--color-bg)] z-0 min-h-[500px]">
       
@@ -110,12 +130,18 @@ export const MainApp: React.FC = () => {
             <div>
               <h1 className="text-[18px] font-semibold text-[var(--color-text)] leading-none tracking-tight shiny-hover">Canva Snapper</h1>
               <div className="flex items-center gap-2 mt-1">
-                <span className={`text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-sm ${session?.tier === 'pro' ? 'bg-[var(--color-accent)] text-white' : 'bg-[var(--color-neutral-100)] text-[var(--color-text-muted)]'}`}>
-                  {session?.tier === 'pro' ? 'PRO TIER' : 'FREE TIER'}
+                <span className={`text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-sm ${
+                  session?.tier === 'pro' 
+                    ? 'bg-[var(--color-accent)] text-white' 
+                    : session?.tier === 'guest'
+                      ? 'bg-amber-100 text-amber-700 border border-amber-200'
+                      : 'bg-[var(--color-neutral-100)] text-[var(--color-text-muted)]'
+                }`}>
+                  {session?.tier === 'pro' ? 'PRO TIER' : session?.tier === 'guest' ? 'GUEST TIER' : 'FREE TIER'}
                 </span>
-                {session?.tier === 'free' && (
+                {session?.tier !== 'pro' && (
                   <span className="text-[10px] font-medium text-[var(--color-text-muted)]">
-                    {10 - history.length} snaps left today
+                    {session?.credits !== undefined ? session.credits : 0} credits left
                   </span>
                 )}
               </div>
@@ -153,6 +179,30 @@ export const MainApp: React.FC = () => {
             </ul>
           </div>
         </section>
+
+        {/* Upgrade & Credits Panel */}
+        {session?.tier !== 'pro' && (
+          <div className="mt-3 p-3 bg-[var(--color-accent-25)] border border-[var(--color-accent-100)] rounded-[20px] flex flex-col gap-2">
+            <div className="text-[12px] text-[var(--color-text)] font-semibold flex items-center justify-between px-1">
+              <span>Upgrade to premium features</span>
+              <span className="text-[11px] text-[var(--color-accent-600)] font-bold">{session?.credits !== undefined ? session.credits : 0} credits left</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 mt-0.5">
+              <button 
+                onClick={handleBuyCredits}
+                className="py-1.5 px-3 bg-white border border-[var(--color-border)] hover:bg-[var(--color-neutral-25)] rounded-xl text-[10px] font-semibold text-[var(--color-text)] cursor-pointer text-center"
+              >
+                +100 Credits ($2.99)
+              </button>
+              <button 
+                onClick={handleUpgradeToPro}
+                className="py-1.5 px-3 bg-[var(--color-accent)] hover:bg-[var(--color-accent-600)] rounded-xl text-[10px] font-semibold text-white cursor-pointer text-center shadow-sm"
+              >
+                Unlock Pro ($4.99/mo)
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Format Selector */}
         {session?.tier === 'pro' && (
