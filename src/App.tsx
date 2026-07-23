@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Sparkles, Zap, Star, Shield, Lock, Copy, Check, ChevronRight, Moon, Sun, ArrowUpRight, Download, Heart, Layers, User, Info } from 'lucide-react';
+import React, { useState } from 'react';
+import { Zap, Star, Copy, ArrowUpRight, Download, Layers, Info } from 'lucide-react';
 
 // Custom Chrome SVG Icon to avoid version mismatch in lucide-react
 const ChromeIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -99,9 +99,7 @@ const PLANS: PlanOption[] = [
 
 export default function App() {
   const [extensionActive, setExtensionActive] = useState<boolean>(true);
-  const [currentTool, setCurrentTool] = useState<'callout' | 'blur' | 'arrow' | 'code'>('callout');
   const [decorations, setDecorations] = useState<{ id: number; x: number; y: number; type: string }[]>([]);
-  const [bgTheme, setBgTheme] = useState<'gradient-1' | 'gradient-2' | 'gradient-3' | 'solid-dark'>('gradient-1');
   const [toast, setToast] = useState<{ show: boolean; msg: string }>({ show: false, msg: '' });
 
   const toggleExtension = () => {
@@ -122,20 +120,14 @@ export default function App() {
     
     setDecorations((prev) => [
       ...prev,
-      { id: Date.now(), x, y, type: currentTool },
+      { id: Date.now(), x, y, type: 'callout' },
     ]);
-    triggerToast(`Added ${currentTool.toUpperCase()} marker`);
+    triggerToast('Added CALLOUT marker');
   };
 
   const resetCanvas = () => {
     setDecorations([]);
     triggerToast('Canvas cleared');
-  };
-
-  const copyMockLink = () => {
-    const mockUrl = "https://snap.link/k89f2a9x";
-    navigator.clipboard.writeText(mockUrl);
-    triggerToast(`Copied snap URL to clipboard!`);
   };
 
   return (

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Sparkles, Info, RefreshCw, Layers, Terminal, ChevronDown, ChevronUp, Trash2, LogOut, Settings } from 'lucide-react';
+import { Info, RefreshCw, Layers, Terminal, ChevronDown, ChevronUp, Trash2, LogOut, Settings } from 'lucide-react';
 import { HistoryCard } from '../components/HistoryCard';
 import { type UserSession, getSession, logout } from '../../lib/auth';
 
