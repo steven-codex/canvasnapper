@@ -1,15 +1,18 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Only backend can modify user credits and tiers
-    match /users/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
-      allow write: if false; // Only cloud functions/admin SDK can write user profiles
+    // Admin validation helper
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == "stevenallenofc@gmail.com";
     }
-    // Only backend can modify device fingerprints
+
+    match /users/{userId} {
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow write: if isAdmin();
+    }
+
     match /device_fingerprints/{fingerprint} {
-      allow read: if true; // Extensions can check if fingerprint exists
-      allow write: if false; // Only cloud functions can write fingerprints
+      allow read, write: if isAdmin();
     }
   }
 }

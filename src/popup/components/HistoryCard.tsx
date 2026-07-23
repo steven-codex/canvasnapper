@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Copy, Check, Clock, Maximize2, Download } from 'lucide-react';
+import { Copy, Check } from 'lucide-react';
 
 interface HistoryItem {
   id: string;
@@ -20,17 +20,6 @@ interface HistoryCardProps {
 export const HistoryCard: React.FC<HistoryCardProps> = ({ item, onCopySuccess, onCopyError, isPro }) => {
   const [copying, setCopying] = useState(false);
 
-  // Format time elapsed
-  const getElapsedString = (timestamp: number) => {
-    const seconds = Math.floor((Date.now() - timestamp) / 1000);
-    if (seconds < 60) return 'Just now';
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    return new Date(timestamp).toLocaleDateString();
-  };
-
   const getSvgStringFromDataUrl = (dataUrl: string): string | null => {
     const prefix = "data:image/svg+xml;base64,";
     if (!dataUrl.startsWith(prefix)) return null;
@@ -43,7 +32,8 @@ export const HistoryCard: React.FC<HistoryCardProps> = ({ item, onCopySuccess, o
     }
   };
 
-  const handleRecopy = async () => {
+  const handleRecopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (copying) return;
     setCopying(true);
 
@@ -64,25 +54,21 @@ export const HistoryCard: React.FC<HistoryCardProps> = ({ item, onCopySuccess, o
 
       try {
         await tryWrite(clipboardItems);
-        onCopySuccess("Recopied to clipboard!");
+        onCopySuccess("Recopied!");
       } catch (err: any) {
-        console.error("Multi-format write failed, retrying PNG-only fallback", err);
         try {
           await tryWrite({ "image/png": pngBlob });
-          onCopySuccess("Recopied PNG to clipboard!");
+          onCopySuccess("Recopied PNG!");
         } catch (fallbackErr: any) {
-          console.error("PNG fallback failed", fallbackErr);
-          onCopyError(`Clipboard block: ${fallbackErr.message || fallbackErr}`);
+          onCopyError(`Error: ${fallbackErr.message || fallbackErr}`);
         }
       } finally {
         setTimeout(() => setCopying(false), 2000);
       }
     };
 
-    // If it is a data URL (SVG)
     if (item.url.startsWith("data:image/svg+xml;base64,")) {
       const svgString = getSvgStringFromDataUrl(item.url);
-      
       const img = new Image();
       img.src = item.url;
       img.onload = () => {
@@ -92,37 +78,32 @@ export const HistoryCard: React.FC<HistoryCardProps> = ({ item, onCopySuccess, o
           canvas.height = item.height;
           const ctx = canvas.getContext("2d");
           if (!ctx) {
-            onCopyError("Failed to create canvas context.");
+            onCopyError("Canvas fail");
             setCopying(false);
             return;
           }
           ctx.drawImage(img, 0, 0);
           canvas.toBlob((pngBlob) => {
             if (!pngBlob) {
-              onCopyError("Failed to create PNG blob.");
+              onCopyError("PNG fail");
               setCopying(false);
               return;
             }
             writeToClipboard(pngBlob, svgString || undefined);
           }, "image/png");
-        } catch (e: any) {
-          onCopyError(`Render error: ${e.message || e}`);
+        } catch (err: any) {
+          onCopyError(err.message || err);
           setCopying(false);
         }
-      };
-      img.onerror = () => {
-        onCopyError("Failed to load SVG preview.");
-        setCopying(false);
       };
       return;
     }
 
-    // Call service worker to fetch the image bytes bypassing CORS
     chrome.runtime.sendMessage(
       { action: "fetch_image_cors", url: item.url },
       async (response) => {
         if (!response || !response.success) {
-          onCopyError("Failed to fetch asset from Canva.");
+          onCopyError("Fetch error");
           setCopying(false);
           return;
         }
@@ -135,18 +116,17 @@ export const HistoryCard: React.FC<HistoryCardProps> = ({ item, onCopySuccess, o
             bytes[i] = binaryString.charCodeAt(i);
           }
           const blob = new Blob([bytes], { type: "image/png" });
-
           writeToClipboard(blob);
         } catch (err: any) {
-          console.error("Clipboard recopy failure:", err);
-          onCopyError(`Clipboard block: ${err.message || err}`);
+          onCopyError("Clipboard error");
           setCopying(false);
         }
       }
     );
   };
 
-  const handleDownload = (format: 'webp' | 'jpeg') => {
+  const handleDownload = (e: React.MouseEvent, format: 'webp' | 'jpeg') => {
+    e.stopPropagation();
     if (!isPro) return;
 
     const performDownload = (src: string) => {
@@ -177,71 +157,78 @@ export const HistoryCard: React.FC<HistoryCardProps> = ({ item, onCopySuccess, o
         if (response && response.success) {
           performDownload(`data:${response.contentType};base64,${response.base64Data}`);
         } else {
-          onCopyError("Failed to fetch asset for download");
+          onCopyError("Download error");
         }
       });
     }
   };
 
   return (
-    <div className="group relative flex items-center gap-3 p-2.5 bg-white border border-[var(--color-border)] hover:border-[var(--color-neutral-200)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.03)] rounded-[20px] transition-all duration-300">
-      {/* Thumbnail Container */}
-      <div className="relative flex-shrink-0 w-12 h-12 bg-[var(--color-neutral-25)] border border-[var(--color-border)] rounded-[12px] overflow-hidden flex items-center justify-center p-0.5">
+    <div 
+      onClick={handleRecopy}
+      className="group relative aspect-square bg-white border-2 border-[#0d1216] shadow-[2px_2px_0px_0px_#0d1216] hover:shadow-[4px_4px_0px_0px_#0d1216] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all duration-150 cursor-pointer overflow-hidden flex flex-col justify-between"
+    >
+      {/* Thumbnail Image */}
+      <div className="absolute inset-0 w-full h-full flex items-center justify-center p-2 bg-white group-hover:opacity-10 transition-opacity duration-150">
         {item.thumbnail ? (
           <img 
             src={item.thumbnail} 
-            alt="Asset preview" 
-            className="w-full h-full object-contain rounded-[8px]"
+            alt="Asset" 
+            className="w-full h-full object-contain rounded"
           />
         ) : (
-          <div className="w-full h-full bg-[var(--color-neutral-50)] rounded-[8px]" />
+          <div className="w-full h-full bg-[#f4f5f6] rounded flex items-center justify-center text-[9px] font-mono text-[#6f767e]">
+            No Preview
+          </div>
         )}
       </div>
 
-      {/* Details */}
-      <div className="flex-grow min-w-0">
-        <div className="flex items-center gap-1.5 text-[11px] font-medium text-[var(--color-text-muted)] tracking-tight">
-          <Clock className="w-3.5 h-3.5 text-[var(--color-neutral-400)]" />
-          <span>{getElapsedString(item.timestamp)}</span>
-        </div>
-        <div className="flex items-center gap-1.5 text-[11px] text-[var(--color-text)] font-semibold mt-0.5 tracking-tight">
-          <Maximize2 className="w-3.5 h-3.5 text-[var(--color-accent)] opacity-80" />
-          <span>{item.width} × {item.height} px</span>
-        </div>
-      </div>
-
+      {/* Hover Actions Overlay */}
+      <div className="absolute inset-0 bg-[#fcfbfa]/95 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex flex-col items-center justify-center p-2 gap-1.5 z-10">
         <button
           onClick={handleRecopy}
           disabled={copying}
-          className={`flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full border transition-all duration-300 ${
+          className={`flex items-center justify-center gap-1 w-full py-1 border-2 border-[#0d1216] text-[9px] font-mono font-bold uppercase transition-all shadow-[1.5px_1.5px_0px_0px_#000] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none ${
             copying
-              ? 'bg-[var(--color-accent-50)] border-[var(--color-accent-100)] text-[var(--color-accent-600)]'
-              : 'bg-[var(--color-neutral-25)] border-[var(--color-border)] hover:bg-[var(--color-accent)] hover:border-[var(--color-accent)] text-[var(--color-neutral-500)] hover:text-white cursor-pointer hover:shadow-[0_4px_10px_rgba(224,70,92,0.3)]'
+              ? 'bg-[#00c4cc] text-[#0d1216]'
+              : 'bg-[#7d2ae7] text-white'
           }`}
-          style={{ transitionTimingFunction: 'var(--ease-spring)' }}
-          title="Copy to clipboard again"
         >
-          {copying ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+          {copying ? (
+            <>
+              <Check className="w-3 h-3" />
+              Copied!
+            </>
+          ) : (
+            <>
+              <Copy className="w-3 h-3" />
+              Copy
+            </>
+          )}
         </button>
 
         {isPro && (
-          <div className="flex flex-col gap-1">
+          <div className="grid grid-cols-2 gap-1 w-full">
             <button
-              onClick={() => handleDownload('webp')}
-              className="flex items-center justify-center w-8 h-8 rounded-full border border-[var(--color-border)] bg-[var(--color-neutral-25)] hover:bg-blue-500 hover:border-blue-500 text-[var(--color-neutral-500)] hover:text-white transition-colors cursor-pointer"
-              title="Download WebP"
+              onClick={(e) => handleDownload(e, 'webp')}
+              className="flex items-center justify-center py-1 rounded border border-[#0d1216] bg-white hover:bg-[#fafafa] text-[#0d1216] text-[8px] font-mono font-bold transition-colors"
             >
-              <Download className="w-3.5 h-3.5" />
+              WEBP
             </button>
             <button
-              onClick={() => handleDownload('jpeg')}
-              className="flex items-center justify-center w-8 h-8 rounded-full border border-[var(--color-border)] bg-[var(--color-neutral-25)] hover:bg-amber-500 hover:border-amber-500 text-[var(--color-neutral-500)] hover:text-white transition-colors cursor-pointer"
-              title="Download JPEG"
+              onClick={(e) => handleDownload(e, 'jpeg')}
+              className="flex items-center justify-center py-1 rounded border border-[#0d1216] bg-white hover:bg-[#fafafa] text-[#0d1216] text-[8px] font-mono font-bold transition-colors"
             >
-              <Download className="w-3.5 h-3.5" />
+              JPG
             </button>
           </div>
         )}
+      </div>
+
+      {/* Dim info tag at the bottom */}
+      <div className="absolute bottom-1 right-1 bg-white/90 border border-[#0d1216] px-1 py-0.5 rounded text-[8px] font-mono font-bold text-[#0d1216] pointer-events-none group-hover:opacity-0 transition-opacity duration-150">
+        {item.width}×{item.height}
+      </div>
     </div>
   );
 };

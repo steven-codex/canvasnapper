@@ -6,6 +6,17 @@ import { validateEvent } from '@polar-sh/sdk/webhooks';
 admin.initializeApp();
 const db = admin.firestore();
 
+// All secrets that need to be accessible by Cloud Functions
+const ALL_SECRETS = [
+  'POLAR_ACCESS_TOKEN',
+  'POLAR_WEBHOOK_SECRET',
+  'POLAR_CREDITS_S_PRODUCT_ID',
+  'POLAR_CREDITS_M_PRODUCT_ID',
+  'POLAR_CREDITS_L_PRODUCT_ID',
+  'POLAR_PRO_MONTHLY_PRODUCT_ID',
+  'POLAR_PRO_LIFETIME_PRODUCT_ID',
+];
+
 // Initialize Polar client
 const POLAR_ACCESS_TOKEN = process.env.POLAR_ACCESS_TOKEN || 'mock_access_token';
 const POLAR_SERVER = process.env.POLAR_SERVER === 'production' ? 'production' : 'sandbox';
@@ -31,7 +42,7 @@ const handleCors = (req: functions.Request, res: functions.Response): boolean =>
 /**
  * Validate a snap request (verifies user credits or guest device limits)
  */
-export const validateSnap = functions.https.onRequest(async (req, res) => {
+export const validateSnap = functions.runWith({ secrets: ALL_SECRETS }).https.onRequest(async (req, res) => {
   if (handleCors(req, res)) return;
 
   try {
@@ -60,19 +71,19 @@ export const validateSnap = functions.https.onRequest(async (req, res) => {
         const userDoc = await transaction.get(userRef);
         
         if (!userDoc.exists) {
-          // New registered user starts with 0 credits and free tier
+          // New registered user starts with 10 free welcome credits
           transaction.set(userRef, {
             email: decodedToken.email || '',
             displayName: decodedToken.name || '',
             tier: 'free',
-            credits: 0,
+            credits: 10,
             createdAt: Date.now()
           });
           
-          res.status(403).json({ 
-            allowed: false, 
-            reason: 'out_of_credits', 
-            message: 'You have 0 credits. Upgrade to Pro or purchase credits to continue.' 
+          res.status(200).json({ 
+            allowed: true, 
+            tier: 'free', 
+            remainingCredits: 10
           });
           return;
         }
@@ -186,7 +197,7 @@ export const validateSnap = functions.https.onRequest(async (req, res) => {
 /**
  * Create a Polar.sh Checkout Session for subscription or credits
  */
-export const createCheckoutSession = functions.https.onRequest(async (req, res) => {
+export const createCheckoutSession = functions.runWith({ secrets: ALL_SECRETS }).https.onRequest(async (req, res) => {
   if (handleCors(req, res)) return;
 
   try {
@@ -201,25 +212,40 @@ export const createCheckoutSession = functions.https.onRequest(async (req, res) 
     const uid = decodedToken.uid;
     const email = decodedToken.email || null;
 
-    const { type } = req.body; // 'subscription' or 'credits'
-    let productId = '';
+    const { type } = req.body;
 
-    if (type === 'subscription') {
-      productId = process.env.POLAR_PRO_PRODUCT_ID || 'polar_pro_monthly';
-    } else if (type === 'credits') {
-      productId = process.env.POLAR_CREDITS_PRODUCT_ID || 'polar_credits_100';
-    } else {
-      res.status(400).json({ error: 'Invalid checkout type.' });
+    const getSecret = (key: string): string => {
+      const val = process.env[key];
+      return val ? val.trim() : '';
+    };
+
+    // Product ID map from Secret Manager env vars
+    const PRODUCT_MAP: Record<string, { id: string; credits?: number; label: string }> = {
+      credits_s:   { id: getSecret('POLAR_CREDITS_S_PRODUCT_ID'),   credits: 25,  label: 'Credits Pack S (25 snaps)' },
+      credits_m:   { id: getSecret('POLAR_CREDITS_M_PRODUCT_ID'),   credits: 75,  label: 'Credits Pack M (75 snaps)' },
+      credits_l:   { id: getSecret('POLAR_CREDITS_L_PRODUCT_ID'),   credits: 200, label: 'Credits Pack L (200 snaps)' },
+      pro_monthly: { id: getSecret('POLAR_PRO_MONTHLY_PRODUCT_ID'), label: 'Pro Monthly' },
+      pro_yearly:  { id: getSecret('POLAR_PRO_YEARLY_PRODUCT_ID'),  label: 'Pro Yearly' },
+      pro_lifetime: { id: getSecret('POLAR_PRO_LIFETIME_PRODUCT_ID'), label: 'Pro Lifetime' },
+    };
+
+    const product = PRODUCT_MAP[type];
+    if (!product || !product.id) {
+      const secretName = `POLAR_${type.toUpperCase()}_PRODUCT_ID`;
+      res.status(400).json({ 
+        error: `Invalid checkout type: '${type}'. Secret '${secretName}' is not set in Firebase Functions.` 
+      });
       return;
     }
 
     const checkout = await polar.checkouts.create({
-      products: [productId],
-      successUrl: 'https://canvasnapper-success.web.app?checkout_id={CHECKOUT_ID}',
+      products: [product.id],
+      successUrl: 'https://canva-snapper-pro-9e1b3.web.app?checkout_id={CHECKOUT_ID}',
       customerEmail: email,
       metadata: {
         userId: uid,
         type: type,
+        credits: product.credits ? String(product.credits) : '0',
       }
     });
 
@@ -231,10 +257,11 @@ export const createCheckoutSession = functions.https.onRequest(async (req, res) 
   }
 });
 
+
 /**
  * Polar Webhook Handler to receive payment events
  */
-export const polarWebhook = functions.https.onRequest(async (req, res) => {
+export const polarWebhook = functions.runWith({ secrets: ALL_SECRETS }).https.onRequest(async (req, res) => {
   // Map headers to Record<string, string> for Polar SDK validator
   const headers: Record<string, string> = {};
   for (const [key, value] of Object.entries(req.headers)) {
@@ -264,9 +291,43 @@ export const polarWebhook = functions.https.onRequest(async (req, res) => {
       case 'order.created':
       case 'order.updated': {
         const order = event.data;
-        if (order.paid && order.metadata?.type === 'credits') {
-          const uid = order.metadata.userId as string;
-          if (uid) {
+        const uid = order.metadata?.userId as string;
+        const type = order.metadata?.type as string;
+        const isCreditsType = type?.startsWith('credits_');
+        const isLifetimeType = type === 'pro_lifetime';
+
+        if (order.paid && uid) {
+          if (isCreditsType) {
+            const creditsToAdd = parseInt(order.metadata?.credits || '0', 10);
+            if (creditsToAdd > 0) {
+              const orderRef = db.collection('processed_orders').doc(order.id);
+              const userRef = db.collection('users').doc(uid);
+              
+              await db.runTransaction(async (transaction) => {
+                // 1. Perform all reads first
+                const orderDoc = await transaction.get(orderRef);
+                const userDoc = await transaction.get(userRef);
+
+                // 2. Perform all writes second
+                if (!orderDoc.exists) {
+                  transaction.set(orderRef, { processedAt: Date.now() });
+                  
+                  if (userDoc.exists) {
+                    transaction.update(userRef, {
+                      credits: admin.firestore.FieldValue.increment(creditsToAdd)
+                    });
+                  } else {
+                    transaction.set(userRef, {
+                      tier: 'free',
+                      credits: creditsToAdd,
+                      createdAt: Date.now()
+                    });
+                  }
+                  console.log(`Processed order ${order.id}: Added ${creditsToAdd} credits to user ${uid}`);
+                }
+              });
+            }
+          } else if (isLifetimeType) {
             const orderRef = db.collection('processed_orders').doc(order.id);
             const userRef = db.collection('users').doc(uid);
             
@@ -274,10 +335,11 @@ export const polarWebhook = functions.https.onRequest(async (req, res) => {
               const orderDoc = await transaction.get(orderRef);
               if (!orderDoc.exists) {
                 transaction.set(orderRef, { processedAt: Date.now() });
-                transaction.update(userRef, {
-                  credits: admin.firestore.FieldValue.increment(100)
-                });
-                console.log(`Processed order ${order.id}: Added 100 credits to user ${uid}`);
+                transaction.set(userRef, {
+                  tier: 'pro',
+                  polarOrderId: order.id
+                }, { merge: true });
+                console.log(`Processed lifetime order ${order.id}: Set user ${uid} to PRO.`);
               }
             });
           }
@@ -293,15 +355,15 @@ export const polarWebhook = functions.https.onRequest(async (req, res) => {
         if (uid) {
           const userRef = db.collection('users').doc(uid);
           if (subscription.status === 'active') {
-            await userRef.update({
+            await userRef.set({
               tier: 'pro',
               polarSubscriptionId: subscription.id
-            });
+            }, { merge: true });
             console.log(`Webhook: Subscription ${subscription.id} active. User ${uid} set to PRO.`);
           } else {
-            await userRef.update({
+            await userRef.set({
               tier: 'free'
-            });
+            }, { merge: true });
             console.log(`Webhook: Subscription ${subscription.id} status is ${subscription.status}. User ${uid} set to FREE.`);
           }
         }
@@ -313,9 +375,9 @@ export const polarWebhook = functions.https.onRequest(async (req, res) => {
         const uid = subscription.metadata?.userId as string;
         if (uid) {
           const userRef = db.collection('users').doc(uid);
-          await userRef.update({
+          await userRef.set({
             tier: 'free'
-          });
+          }, { merge: true });
           console.log(`Webhook: Subscription ${subscription.id} revoked. User ${uid} set to FREE.`);
         }
         break;

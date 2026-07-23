@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Successful - Canva Snapper Pro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      --bg: #ffffff;
+      --bg-gradient: linear-gradient(135deg, #f9f8fc 0%, #f1eef8 100%);
+      --card-bg: #ffffff;
+      --card-border: #e8ecef;
+      --text-main: #0d1216; /* Canva Dark Ink */
+      --text-muted: #6f767e;
+      --accent: #7d2ae7; /* Canva Purple */
+      --accent-blue: #3969e7;
+      --accent-teal: #00c4cc;
+      --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+      --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-gradient);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Ambient background glows */
+    .glow-container {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .glow-orb {
+      position: absolute;
+      top: 30%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 500px;
+      height: 500px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(125, 42, 231, 0.08) 0%, rgba(0, 196, 204, 0) 70%);
+      filter: blur(40px);
+    }
+
+    /* Main container */
+    .success-container {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      max-width: 440px;
+      padding: 24px;
+    }
+
+    /* Elevated White Card */
+    .glass-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px; /* Canva standard raised element */
+      padding: 40px 32px;
+      box-shadow: 0 12px 32px rgba(13, 18, 22, 0.06),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.6);
+      text-align: center;
+      opacity: 0;
+      transform: scale(0.96) translateY(10px);
+      animation: card-entrance 0.8s var(--ease-spring) forwards;
+    }
+
+    @keyframes card-entrance {
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+
+    /* Animated Checkmark Circle */
+    .icon-wrapper {
+      position: relative;
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .circle-glow {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background-color: var(--accent);
+      opacity: 0.08;
+      filter: blur(6px);
+      transform: scale(0.8);
+      animation: pulse-glow 3s infinite ease-in-out;
+    }
+
+    @keyframes pulse-glow {
+      0%, 100% { transform: scale(0.8); opacity: 0.08; }
+      50% { transform: scale(1.1); opacity: 0.15; }
+    }
+
+    .success-svg {
+      width: 80px;
+      height: 80px;
+      z-index: 2;
+    }
+
+    .svg-circle {
+      stroke: var(--accent);
+      stroke-width: 4;
+      stroke-dasharray: 260;
+      stroke-dashoffset: 260;
+      fill: none;
+      transform-origin: center;
+      transform: rotate(-90deg);
+      animation: draw-circle 1s var(--ease-out) forwards 0.2s;
+    }
+
+    .svg-check {
+      stroke: var(--accent);
+      stroke-width: 5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-dasharray: 60;
+      stroke-dashoffset: 60;
+      fill: none;
+      animation: draw-check 0.6s var(--ease-spring) forwards 0.8s;
+    }
+
+    @keyframes draw-circle {
+      to { stroke-dashoffset: 0; }
+    }
+
+    @keyframes draw-check {
+      to { stroke-dashoffset: 0; }
+    }
+
+    /* Sparkles */
+    .sparkle {
+      position: absolute;
+      color: var(--accent-teal);
+      opacity: 0;
+      animation: sparkle-reveal 1.2s ease-out forwards;
+    }
+
+    .sparkle-1 { top: 0; left: 10px; animation-delay: 1s; }
+    .sparkle-2 { bottom: 10px; right: 10px; animation-delay: 1.2s; }
+    .sparkle-3 { top: 30px; right: 0px; animation-delay: 1.4s; }
+
+    @keyframes sparkle-reveal {
+      0% { transform: scale(0.3) rotate(0deg); opacity: 0; }
+      50% { opacity: 0.8; }
+      100% { transform: scale(1) rotate(15deg); opacity: 0; }
+    }
+
+    /* Content Typography */
+    h1 {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: var(--text-main);
+      margin-bottom: 12px;
+      text-wrap: balance;
+    }
+
+    p {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: 28px;
+    }
+
+    /* Transaction Info Box */
+    .info-box {
+      background: #fdfcff;
+      border: 1px solid #efe5ff;
+      border-radius: 16px;
+      padding: 18px 20px;
+      margin-bottom: 28px;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+      box-shadow: 0 4px 12px rgba(125, 42, 231, 0.02);
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .info-divider {
+      height: 1px;
+      border-top: 1px dashed #efe5ff;
+      margin: 2px 0;
+    }
+
+    .info-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .info-value-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .info-value {
+      color: var(--text-main);
+      font-weight: 700;
+      font-size: 12px;
+    }
+
+    .info-value.mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 11px;
+      color: #3b3e44;
+      background: #f5f4f8;
+      padding: 4px 8px;
+      border-radius: 6px;
+      max-width: 140px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      border: 1px solid #e8e7ec;
+    }
+
+    /* Status Badge & Dot */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 800;
+      background: #ecfdf5;
+      color: #047857;
+      border: 1px solid #a7f3d0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      background-color: #10b981;
+      border-radius: 50%;
+      display: inline-block;
+      animation: pulse-dot 2s infinite var(--ease-out);
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.4); opacity: 0.6; }
+    }
+
+    /* Copy Button */
+    .copy-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      border: 1px solid #e8e7ec;
+      background: #ffffff;
+      color: #6f767e;
+      cursor: pointer;
+      transition: all 160ms var(--ease-out);
+    }
+
+    .copy-btn:hover {
+      background: #f5f4f8;
+      color: var(--accent);
+      border-color: #efe5ff;
+    }
+
+    .copy-btn:active {
+      transform: scale(0.9);
+    }
+
+    /* Canva Gradient Primary Button */
+    .action-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 44px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-blue));
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 700;
+      text-decoration: none;
+      border-radius: 8px; /* radiusElement */
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(125, 42, 231, 0.25);
+      transition: opacity 0.2s var(--ease-out),
+                  transform 0.15s var(--ease-out),
+                  box-shadow 0.2s var(--ease-out);
+    }
+
+    .action-button:hover {
+      opacity: 0.95;
+      box-shadow: 0 6px 18px rgba(125, 42, 231, 0.35);
+    }
+
+    .action-button:active {
+      transform: scale(0.97);
+    }
+
+    /* Footer link */
+    .back-link {
+      display: block;
+      margin-top: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.2s var(--ease-out);
+    }
+
+    .back-link:hover {
+      color: var(--accent);
+    }
+
+    /* Muted Transaction Footer */
+    .transaction-footer {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+      margin-top: 24px;
+      font-size: 11px;
+      color: var(--text-muted);
+      opacity: 0.55;
+      transition: opacity 160ms var(--ease-out);
+    }
+
+    .transaction-footer:hover {
+      opacity: 0.9;
+    }
+
+    .copy-link-btn {
+      background: none;
+      border: none;
+      color: var(--accent);
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: underline;
+      padding: 0;
+      font-size: 11px;
+      font-family: var(--font-sans);
+      transition: color 120ms var(--ease-out);
+    }
+
+    .copy-link-btn:hover {
+      color: var(--accent-blue);
+    }
+
+    .copy-link-btn:active {
+      transform: scale(0.95);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="glow-container">
+    <div class="glow-orb"></div>
+  </div>
+
+  <div class="success-container">
+    <div class="glass-card">
+      <div class="icon-wrapper">
+        <div class="circle-glow"></div>
+        <svg class="success-svg" viewBox="0 0 80 80">
+          <circle class="svg-circle" cx="40" cy="40" r="38"></circle>
+          <path class="svg-check" d="M26 40 L36 49 L55 31"></path>
+        </svg>
+        <!-- Partikel Bintang -->
+        <svg class="sparkle sparkle-1" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 0L14.6 9.4L24 12L14.6 14.6L12 24L9.4 14.6L0 12L9.4 9.4L12 0Z"/>
+        </svg>
+        <svg class="sparkle sparkle-2" width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 0L14.6 9.4L24 12L14.6 14.6L12 24L9.4 14.6L0 12L9.4 9.4L12 0Z"/>
+        </svg>
+        <svg class="sparkle sparkle-3" width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 0L14.6 9.4L24 12L14.6 14.6L12 24L9.4 14.6L0 12L9.4 9.4L12 0Z"/>
+        </svg>
+      </div>
+
+      <h1>Payment Successful!</h1>
+      <p>Thank you for upgrading. Your Canva Snapper Pro credits have been updated successfully. You can close this tab and start snapping.</p>
+
+      <div class="info-box">
+        <div class="info-row">
+          <span class="info-label">Status</span>
+          <span class="status-badge">
+            <span class="status-dot"></span>
+            Paid (Sandbox)
+          </span>
+        </div>
+      </div>
+
+      <a href="https://www.canva.com" class="action-button">
+        Open Canva Editor
+      </a>
+      
+      <a href="#" onclick="window.close(); return false;" class="back-link">
+        Close this page
+      </a>
+    </div>
+
+    <!-- Muted Transaction Footer -->
+    <div class="transaction-footer">
+      <span>Checkout ID: <span id="checkout-id-val" style="font-family: monospace; font-weight: 600;">-</span></span>
+      <button class="copy-link-btn" id="copy-btn" onclick="copyCheckoutId()">Copy</button>
+    </div>
+  </div>
+
+  <script>
+    let currentCheckoutId = '';
+
+    // Extract checkout ID from URL params
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const checkoutId = urlParams.get('checkout_id');
+      if (checkoutId) {
+        currentCheckoutId = checkoutId;
+        const displayVal = document.getElementById('checkout-id-val');
+        // Show truncated version in UI, but keep full ID in title and state
+        const truncated = checkoutId.length > 15 
+          ? checkoutId.substring(0, 8) + '...' + checkoutId.substring(checkoutId.length - 6)
+          : checkoutId;
+        displayVal.textContent = truncated;
+        displayVal.title = checkoutId;
+      }
+    } catch (e) {
+      console.error("Failed to parse URL params:", e);
+    }
+
+    // Copy to clipboard function
+    async function copyCheckoutId() {
+      if (!currentCheckoutId || currentCheckoutId === '-') return;
+      
+      try {
+        await navigator.clipboard.writeText(currentCheckoutId);
+        
+        const copyBtn = document.getElementById('copy-btn');
+        const originalText = copyBtn.textContent;
+        
+        copyBtn.textContent = 'Copied!';
+        copyBtn.style.color = '#10b981';
+        
+        setTimeout(() => {
+          copyBtn.textContent = originalText;
+          copyBtn.style.color = '';
+        }, 2000);
+        
+      } catch (err) {
+        console.error('Failed to copy text: ', err);
+      }
+    }
+  </script>
+</body>
+</html>

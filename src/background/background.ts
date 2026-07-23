@@ -79,7 +79,7 @@ async function validateSnapOnBackend(snapType: 'png' | 'svg'): Promise<{ allowed
       }
 
       try {
-        const response = await fetch("https://us-central1-canva-snapper-pro.cloudfunctions.net/validateSnap", {
+        const response = await fetch("https://us-central1-canva-snapper-pro-9e1b3.cloudfunctions.net/validateSnap", {
           method: "POST",
           headers,
           body: JSON.stringify({
@@ -270,7 +270,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       }
 
       try {
-        const response = await fetch("https://us-central1-canva-snapper-pro.cloudfunctions.net/createCheckoutSession", {
+        const response = await fetch("https://us-central1-canva-snapper-pro-9e1b3.cloudfunctions.net/createCheckoutSession", {
           method: "POST",
           headers: {
             'Content-Type': 'application/json',

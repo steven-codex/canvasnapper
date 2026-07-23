@@ -5,22 +5,46 @@ import {
   GoogleAuthProvider, 
   signOut
 } from 'firebase/auth';
-import { getFirestore, doc, onSnapshot } from 'firebase/firestore';
+import { getFirestore, doc, onSnapshot, DocumentSnapshot, FirestoreError } from 'firebase/firestore';
 
-// Note: Replace these config values with your actual Firebase project settings
+// Firebase config loaded from environment variables (see .env.example)
+// Run: cp .env.example .env and fill in your real values
 const firebaseConfig = {
-  apiKey: "AIzaSyMockKey-ReplaceWithYourOwnApiKey",
-  authDomain: "canva-snapper-pro.firebaseapp.com",
-  projectId: "canva-snapper-pro",
-  storageBucket: "canva-snapper-pro.appspot.com",
-  messagingSenderId: "1234567890",
-  appId: "1:1234567890:web:abcdef123456"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+
+// Keep cached storage token in sync with Firebase Auth token refreshes
+auth.onIdTokenChanged(async (user) => {
+  if (user) {
+    try {
+      const token = await user.getIdToken();
+      chrome.storage.local.get({ session: DEFAULT_SESSION }, (res) => {
+        const session = res.session as UserSession;
+        if (session && session.isLoggedIn) {
+          session.token = token;
+          chrome.storage.local.set({ session });
+        }
+      });
+      
+      // Auto-subscribe to Firestore document for real-time credit & tier synchronization
+      subscribeToUserFirestore(user.uid);
+    } catch (e) {
+      console.error("[Canva Snapper] Failed to get fresh ID token:", e);
+    }
+  } else {
+    unsubscribeUserFirestore();
+  }
+});
 
 export type UserTier = 'free' | 'pro' | 'guest';
 
@@ -44,17 +68,46 @@ const DEFAULT_SESSION: UserSession = {
 };
 
 /**
- * Gets the current device fingerprint for Guest mode, or creates one if it doesn't exist
+ * Gets or creates a device fingerprint combining chrome.instanceID (hardware-bound,
+ * survives storage clears) with a random local salt stored in chrome.storage.
+ * This is much harder to reset than a pure random string — user must uninstall
+ * + reinstall the extension AND get a new instanceID to bypass it.
  */
 export const getOrCreateFingerprint = (): Promise<string> => {
   return new Promise((resolve) => {
-    chrome.storage.local.get({ fingerprint: null }, (res: any) => {
-      if (res.fingerprint) {
-        resolve(res.fingerprint);
+    // First, get or create the local random salt
+    chrome.storage.local.get({ fingerprintSalt: null }, (res: any) => {
+      const salt = res.fingerprintSalt || Math.random().toString(36).substring(2, 15);
+
+      if (!res.fingerprintSalt) {
+        chrome.storage.local.set({ fingerprintSalt: salt });
+      }
+
+      // Combine with chrome.instanceID for hardware-bound uniqueness
+      if (typeof chrome.instanceID !== 'undefined' && chrome.instanceID.getID) {
+        chrome.instanceID.getID((instanceId: string) => {
+          // Hash-like combination: instanceID (hardware) + salt (local)
+          const combined = `fp_${instanceId}_${salt}`;
+          // Cache the combined fingerprint to avoid repeated instanceID calls
+          chrome.storage.local.get({ fingerprint: null }, (cached: any) => {
+            if (cached.fingerprint && cached.fingerprint.startsWith('fp_' + instanceId)) {
+              resolve(cached.fingerprint);
+            } else {
+              chrome.storage.local.set({ fingerprint: combined });
+              resolve(combined);
+            }
+          });
+        });
       } else {
-        const newFingerprint = 'fp_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
-        chrome.storage.local.set({ fingerprint: newFingerprint }, () => {
-          resolve(newFingerprint);
+        // Fallback for environments where instanceID is unavailable (e.g. dev mode)
+        chrome.storage.local.get({ fingerprint: null }, (cached: any) => {
+          if (cached.fingerprint) {
+            resolve(cached.fingerprint);
+          } else {
+            const fallback = `fp_${salt}_${Date.now().toString(36)}`;
+            chrome.storage.local.set({ fingerprint: fallback });
+            resolve(fallback);
+          }
         });
       }
     });
@@ -97,16 +150,18 @@ export const subscribeToUserFirestore = (uid: string) => {
   }
 
   const docRef = doc(db, "users", uid);
-  unsubscribeDocListener = onSnapshot(docRef, async (docSnap) => {
+  unsubscribeDocListener = onSnapshot(docRef, async (docSnap: DocumentSnapshot) => {
     if (docSnap.exists()) {
       const data = docSnap.data();
+      const current = await getSession();
+      const isSystemAdmin = current.email === 'stevenallenofc@gmail.com';
       await updateSession({
-        tier: data.tier || 'free',
+        tier: isSystemAdmin ? 'pro' : (data.tier || 'free'),
         credits: data.credits !== undefined ? data.credits : 0,
       });
     }
-  }, (error) => {
-    console.error("Firestore document subscription failed:", error);
+  }, (error: FirestoreError) => {
+    console.error("[Canva Snapper] Firestore document subscription failed:", error);
   });
 };
 
@@ -121,36 +176,24 @@ export const unsubscribeUserFirestore = () => {
 };
 
 /**
- * Perform Google Sign-In in Manifest V3
+ * Perform Google Sign-In in Manifest V3 using chrome.identity
  */
 export const loginWithGoogle = async (): Promise<UserSession> => {
   return new Promise((resolve, reject) => {
     chrome.identity.getAuthToken({ interactive: true }, async (googleAccessToken) => {
       if (chrome.runtime.lastError || !googleAccessToken) {
-        const errMsg = chrome.runtime.lastError?.message || "Google OAuth token not returned.";
-        console.warn("Google Sign-In failed or manifest not configured. Simulating credentials:", errMsg);
-        
-        // Developer friendly Mock Fallback: If identity is not configured in Google Cloud Console yet,
-        // we fallback to signing in as mock free/pro for testing purposes.
-        const mockEmail = 'designer@example.com';
-        const mockSession = await updateSession({
-          isLoggedIn: true,
-          tier: 'pro',
-          email: mockEmail,
-          name: 'Designer Mock',
-          uid: 'mock_uid_123',
-          credits: -1,
-          token: 'mock_jwt_token_456'
-        });
-        resolve(mockSession);
+        // Real error — do NOT fall back to mock. Fail loudly so the user knows.
+        const errMsg = chrome.runtime.lastError?.message || "Google OAuth token was not returned. Make sure the extension OAuth client is configured in Google Cloud Console.";
+        console.error("[Canva Snapper] Google Sign-In failed:", errMsg);
+        reject(new Error(errMsg));
         return;
       }
 
       try {
-        const tokenString = googleAccessToken && typeof googleAccessToken === 'object' 
-          ? (googleAccessToken as any).token 
+        const tokenString = googleAccessToken && typeof googleAccessToken === 'object'
+          ? (googleAccessToken as any).token
           : (googleAccessToken as string);
-          
+
         if (!tokenString) {
           throw new Error("Google access token is empty.");
         }
@@ -161,23 +204,24 @@ export const loginWithGoogle = async (): Promise<UserSession> => {
         const user = userCredential.user;
         const idToken = await user.getIdToken();
 
-        // Setup session
+        // Setup session with initial free tier — real tier synced from Firestore
+        const isSystemAdmin = (user.email || '').toLowerCase() === 'stevenallenofc@gmail.com';
         const session = await updateSession({
           isLoggedIn: true,
           uid: user.uid,
           email: user.email || '',
           name: user.displayName || '',
           token: idToken,
-          tier: 'free', // Will be synchronized from Firestore rules
-          credits: 0
+          tier: isSystemAdmin ? 'pro' : 'free',
+          credits: isSystemAdmin ? 99999 : 0
         });
 
-        // Start listening to Firestore changes for user tier & credits
+        // Start real-time listener to sync tier & credits from Firestore
         subscribeToUserFirestore(user.uid);
 
         resolve(session);
       } catch (err: any) {
-        console.error("Firebase authentication error:", err);
+        console.error("[Canva Snapper] Firebase authentication error:", err);
         reject(err);
       }
     });
@@ -185,34 +229,44 @@ export const loginWithGoogle = async (): Promise<UserSession> => {
 };
 
 /**
- * Initialize Guest Mode with 3 non-renewable credits
+ * Initialize Guest Mode — 3 non-renewable credits tracked server-side by device fingerprint
  */
 export const continueAsFree = async (): Promise<UserSession> => {
   const fingerprint = await getOrCreateFingerprint();
-  
-  // Call backend function to check initial guest state (fingerprint limits)
+  const functionsBaseUrl = import.meta.env.VITE_FUNCTIONS_BASE_URL;
+
+  if (!functionsBaseUrl) {
+    // .env not configured yet — safe local fallback for development only
+    console.warn("[Canva Snapper] VITE_FUNCTIONS_BASE_URL not set. Using local guest fallback (dev only).");
+    return updateSession({
+      isLoggedIn: true,
+      tier: 'guest',
+      credits: 3
+    });
+  }
+
   try {
-    const response = await fetch("https://us-central1-canva-snapper-pro.cloudfunctions.net/validateSnap", {
+    const response = await fetch(`${functionsBaseUrl}/validateSnap`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ snapType: 'png', fingerprint })
     });
-    
+
     const data = await response.json();
-    
-    // Update local guest session based on response
+
     return updateSession({
       isLoggedIn: true,
       tier: 'guest',
-      credits: data.remainingCredits !== undefined ? data.remainingCredits : 2 // default to 2 if allowed (deducted 1st snap)
+      // remainingCredits after the initial check-in snap deduction
+      credits: data.remainingCredits !== undefined ? data.remainingCredits : 2
     });
   } catch (error) {
-    console.warn("Backend not deployed yet. Proceeding with mock local Guest limit.");
-    // Fallback if backend functions not deployed yet
+    console.error("[Canva Snapper] Failed to reach backend for guest validation:", error);
+    // Network error fallback — still allow guest but cap at 3 credits locally
     return updateSession({
       isLoggedIn: true,
       tier: 'guest',
-      credits: 3 // Start with 3 credits locally
+      credits: 3
     });
   }
 };
