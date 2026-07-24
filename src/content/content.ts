@@ -566,8 +566,7 @@ function createThumbnail(originalCanvas: HTMLCanvasElement, maxWidth: number): P
 
 // Core function to capture, process, and copy the image
 function captureAndCopyImage(imageUrl: string, width: number, height: number, isSvg: boolean) {
-  chrome.storage.local.get({ session: null, history: [], autoDownloadFormat: 'none' }, (res: any) => {
-    const session = res.session || { tier: 'free' };
+  chrome.storage.local.get({ history: [], autoDownloadFormat: 'none' }, (res: any) => {
     const autoDownloadFormat = res.autoDownloadFormat;
 
     logDiagnostic(`Starting capture: ${imageUrl.substring(0, 60)}...`, { width, height, isSvg });
@@ -627,14 +626,18 @@ function captureAndCopyImage(imageUrl: string, width: number, height: number, is
               logDiagnostic("Success: Copied assets to clipboard", Object.keys(clipboardItems));
               toast.show("success", `Copied to clipboard! (${finalWidth}x${finalHeight}px)`);
               
-              if (autoDownloadFormat !== 'none' && session.tier === 'pro') {
+              if (autoDownloadFormat !== 'none') {
                 const format = autoDownloadFormat;
-                const dataUrl = canvas.toDataURL(`image/${format}`, 0.8);
-                chrome.runtime.sendMessage({
-                  action: "trigger_download",
-                  url: dataUrl,
-                  filename: `canva-snap-${Date.now()}.${format}`
-                });
+                const dataUrl = canvas.toDataURL(format === 'jpeg' ? 'image/jpeg' : 'image/webp', 0.8);
+                
+                // Create a temporary link and trigger download directly in content script context
+                // This bypasses background script data-URI length limit issues.
+                const link = document.createElement('a');
+                link.href = dataUrl;
+                link.download = `canva-snap-${Date.now()}.${format}`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
               }
 
               // Add to history
