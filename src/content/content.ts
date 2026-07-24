@@ -605,106 +605,109 @@ function captureAndCopyImage(imageUrl: string, width: number, height: number, is
         
         ctx.drawImage(img, 0, 0);
         
-        canvas.toBlob((pngBlob) => {
-          if (corsBypass) URL.revokeObjectURL(srcUrl);
-          
-          if (!pngBlob) {
-            logDiagnostic("Error: Canvas.toBlob returned null");
-            toast.show("error", "Failed to export transparent PNG.");
-            return;
-          }
-          
-          const clipboardItems: Record<string, Blob> = {
-            "image/png": pngBlob
-          };
-          
-          if (isSvg) {
-            const svgString = getSvgStringFromDataUrl(imageUrl);
-            if (svgString) {
-              clipboardItems["text/plain"] = new Blob([svgString], { type: "text/plain" });
-              clipboardItems["text/html"] = new Blob([svgString], { type: "text/html" });
-            }
-          }
-          
-          const tryWrite = (items: Record<string, Blob>) => {
-            return navigator.clipboard.write([
-              new ClipboardItem(items)
-            ]);
-          };
-          
-          tryWrite(clipboardItems)
-            .then(() => {
-              logDiagnostic("Success: Copied assets to clipboard", Object.keys(clipboardItems));
-              toast.show("success", `Copied to clipboard! (${finalWidth}x${finalHeight}px)`);
-              
-              if (autoDownloadFormat !== 'none' && isProOrAdmin) {
-                const format = autoDownloadFormat;
-                const dataUrl = canvas.toDataURL(format === 'jpeg' ? 'image/jpeg' : 'image/webp', 0.8);
-                
-                // Create a temporary link and trigger download directly in content script context
-                // This bypasses background script data-URI length limit issues.
-                const link = document.createElement('a');
-                link.href = dataUrl;
-                link.download = `canva-snap-${Date.now()}.${format}`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-              }
+        if (corsBypass) URL.revokeObjectURL(srcUrl);
 
-              // Add to history
-              createThumbnail(canvas, 150).then((thumbnailBase64) => {
-                if (isContextValid()) {
-                  try {
-                    chrome.runtime.sendMessage({
-                      action: "add_to_history",
-                      data: {
-                        url: imageUrl,
-                        thumbnail: thumbnailBase64,
-                        width: finalWidth,
-                        height: finalHeight
-                      }
-                    });
-                  } catch (e) {
-                    // Ignore context invalidation
-                  }
-                }
-              });
-            })
-            .catch((err) => {
-              logDiagnostic("Error: Clipboard write rejected. Retrying PNG-only fallback.", err.message || err);
-              if (isSvg && (clipboardItems["text/plain"] || clipboardItems["text/html"])) {
-                tryWrite({ "image/png": pngBlob })
-                  .then(() => {
-                    logDiagnostic("Success: Copied PNG only (fallback) to clipboard");
-                    toast.show("success", `Copied PNG to clipboard! (${finalWidth}x${finalHeight}px)`);
-                    
-                    createThumbnail(canvas, 150).then((thumbnailBase64) => {
-                      if (isContextValid()) {
-                        try {
-                          chrome.runtime.sendMessage({
-                            action: "add_to_history",
-                            data: {
-                              url: imageUrl,
-                              thumbnail: thumbnailBase64,
-                              width: finalWidth,
-                              height: finalHeight
-                            }
-                          });
-                        } catch (e) {
-                          // Ignore context invalidation
-                        }
-                      }
-                    });
-                  })
-                  .catch((fallbackErr) => {
-                    logDiagnostic("Error: Fallback clipboard write rejected", fallbackErr.message || fallbackErr);
-                    toast.show("error", `Clipboard access blocked: ${fallbackErr.message || fallbackErr}`);
+        // Define a function that returns a Promise resolving to the PNG blob
+        const imageBlobPromise = new Promise<Blob>((resolve, reject) => {
+          canvas.toBlob((blob) => {
+            if (blob) {
+              resolve(blob);
+            } else {
+              reject(new Error("Failed to generate transparent PNG"));
+            }
+          }, "image/png");
+        });
+
+        // Setup the clipboard item mapping
+        const clipboardItems: Record<string, Promise<Blob> | Blob> = {
+          "image/png": imageBlobPromise
+        };
+
+        if (isSvg) {
+          const svgString = getSvgStringFromDataUrl(imageUrl);
+          if (svgString) {
+            clipboardItems["text/plain"] = new Blob([svgString], { type: "text/plain" });
+            clipboardItems["text/html"] = new Blob([svgString], { type: "text/html" });
+          }
+        }
+
+        const doClipboardWrite = (items: Record<string, Promise<Blob> | Blob>) => {
+          return navigator.clipboard.write([
+            new ClipboardItem(items as any)
+          ]);
+        };
+
+        doClipboardWrite(clipboardItems)
+          .then(() => {
+            logDiagnostic("Success: Copied assets to clipboard", Object.keys(clipboardItems));
+            toast.show("success", `Copied to clipboard! (${finalWidth}x${finalHeight}px)`);
+
+            // Perform auto-download if active
+            if (autoDownloadFormat !== 'none' && isProOrAdmin) {
+              const format = autoDownloadFormat;
+              const dataUrl = canvas.toDataURL(format === 'jpeg' ? 'image/jpeg' : 'image/webp', 0.8);
+              const link = document.createElement('a');
+              link.href = dataUrl;
+              link.download = `canva-snap-${Date.now()}.${format}`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            }
+
+            // Save to history
+            createThumbnail(canvas, 150).then((thumbnailBase64) => {
+              if (isContextValid()) {
+                try {
+                  chrome.runtime.sendMessage({
+                    action: "add_to_history",
+                    data: {
+                      url: imageUrl,
+                      thumbnail: thumbnailBase64,
+                      width: finalWidth,
+                      height: finalHeight
+                    }
                   });
-              } else {
-                toast.show("error", `Clipboard access blocked: ${err.message || err}`);
+                } catch (e) {
+                  // Ignore context invalidation
+                }
               }
             });
-        }, "image/png");
+          })
+          .catch((err) => {
+            logDiagnostic("Error: Clipboard write rejected. Retrying PNG-only fallback.", err.message || err);
+            // If the failure was because of rich text formats, fallback to PNG only
+            if (isSvg && (clipboardItems["text/plain"] || clipboardItems["text/html"])) {
+              doClipboardWrite({ "image/png": imageBlobPromise })
+                .then(() => {
+                  logDiagnostic("Success: Copied PNG only (fallback) to clipboard");
+                  toast.show("success", `Copied PNG to clipboard! (${finalWidth}x${finalHeight}px)`);
+                  
+                  createThumbnail(canvas, 150).then((thumbnailBase64) => {
+                    if (isContextValid()) {
+                      try {
+                        chrome.runtime.sendMessage({
+                          action: "add_to_history",
+                          data: {
+                            url: imageUrl,
+                            thumbnail: thumbnailBase64,
+                            width: finalWidth,
+                            height: finalHeight
+                          }
+                        });
+                      } catch (e) {
+                        // Ignore context invalidation
+                      }
+                    }
+                  });
+                })
+                .catch((fallbackErr) => {
+                  logDiagnostic("Error: Fallback clipboard write rejected", fallbackErr.message || fallbackErr);
+                  toast.show("error", `Clipboard access blocked: ${fallbackErr.message || fallbackErr}`);
+                });
+            } else {
+              toast.show("error", `Clipboard access blocked: ${err.message || err}`);
+            }
+          });
         
       } catch (err: any) {
         if (corsBypass) URL.revokeObjectURL(srcUrl);
