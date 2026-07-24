@@ -308,59 +308,61 @@ export const MainApp: React.FC<MainAppProps> = ({ onNavigateToPricing }) => {
           )}
         </div>
 
-        {/* Diagnostic Logs Accordion */}
-        <div className="mt-4 pt-3 border-t-2 border-[#0d1216]">
-          <button
-            onClick={() => setShowDiagnostics(!showDiagnostics)}
-            className="w-full flex items-center justify-between text-[11px] font-mono font-bold text-[#0d1216] hover:text-[#7d2ae7] transition-colors py-1 cursor-pointer"
-          >
-            <span className="flex items-center gap-1.5 uppercase">
-              <Terminal className="w-4 h-4 text-[#7d2ae7]" />
-              Diagnostic Logs ({diagnostics.length})
-            </span>
-            {showDiagnostics ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </button>
+        {/* Diagnostic Logs Accordion (Admin only) */}
+        {session?.email?.toLowerCase() === 'stevenallenofc@gmail.com' && (
+          <div className="mt-4 pt-3 border-t-2 border-[#0d1216]">
+            <button
+              onClick={() => setShowDiagnostics(!showDiagnostics)}
+              className="w-full flex items-center justify-between text-[11px] font-mono font-bold text-[#0d1216] hover:text-[#7d2ae7] transition-colors py-1 cursor-pointer"
+            >
+              <span className="flex items-center gap-1.5 uppercase">
+                <Terminal className="w-4 h-4 text-[#7d2ae7]" />
+                Diagnostic Logs ({diagnostics.length})
+              </span>
+              {showDiagnostics ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
 
-          {showDiagnostics && (
-            <div className="mt-2 flex flex-col bg-white border-2 border-[#0d1216] rounded-xl p-3 shadow-[3px_3px_0px_0px_#0d1216]">
-              <div className="flex items-center justify-between pb-2 mb-2 border-b-2 border-[#0d1216]">
-                <span className="text-[9px] font-mono font-black uppercase text-[#0d1216]">Live Stream</span>
-                {diagnostics.length > 0 && (
-                  <button
-                    onClick={handleClearDiagnostics}
-                    className="text-[9px] font-mono font-bold text-[#0d1216] hover:bg-red-50 flex items-center gap-1 cursor-pointer uppercase bg-white border border-[#0d1216] px-1.5 py-0.5 rounded shadow-[1px_1px_0px_0px_#000]"
-                    title="Clear diagnostics logs"
-                  >
-                    <Trash2 className="w-2.5 h-2.5 text-red-500" />
-                    Clear
-                  </button>
-                )}
-              </div>
-              
-              <div className="space-y-2 max-h-[120px] overflow-y-auto font-mono text-[10px] text-[#2b2f33] pr-1 select-text">
-                {diagnostics.length === 0 ? (
-                  <p className="text-gray-400 italic py-2 text-center">No logs generated. Reload Canva tab and press Alt+C.</p>
-                ) : (
-                  diagnostics.map((log, idx) => (
-                    <div key={idx} className="border-b border-gray-200 pb-2 last:border-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="text-[#0d1216] font-bold">{log.message}</span>
-                        <span className="text-[9px] text-gray-400 flex-shrink-0">
-                          {new Date(log.timestamp).toLocaleTimeString()}
-                        </span>
+            {showDiagnostics && (
+              <div className="mt-2 flex flex-col bg-white border-2 border-[#0d1216] rounded-xl p-3 shadow-[3px_3px_0px_0px_#0d1216]">
+                <div className="flex items-center justify-between pb-2 mb-2 border-b-2 border-[#0d1216]">
+                  <span className="text-[9px] font-mono font-black uppercase text-[#0d1216]">Live Stream</span>
+                  {diagnostics.length > 0 && (
+                    <button
+                      onClick={handleClearDiagnostics}
+                      className="text-[9px] font-mono font-bold text-[#0d1216] hover:bg-red-50 flex items-center gap-1 cursor-pointer uppercase bg-white border border-[#0d1216] px-1.5 py-0.5 rounded shadow-[1px_1px_0px_0px_#000]"
+                      title="Clear diagnostics logs"
+                    >
+                      <Trash2 className="w-2.5 h-2.5 text-red-500" />
+                      Clear
+                    </button>
+                  )}
+                </div>
+                
+                <div className="space-y-2 max-h-[120px] overflow-y-auto font-mono text-[10px] text-[#2b2f33] pr-1 select-text">
+                  {diagnostics.length === 0 ? (
+                    <p className="text-gray-400 italic py-2 text-center">No logs generated. Reload Canva tab and press Alt+C.</p>
+                  ) : (
+                    diagnostics.map((log, idx) => (
+                      <div key={idx} className="border-b border-gray-200 pb-2 last:border-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="text-[#0d1216] font-bold">{log.message}</span>
+                          <span className="text-[9px] text-gray-400 flex-shrink-0">
+                            {new Date(log.timestamp).toLocaleTimeString()}
+                          </span>
+                        </div>
+                        {log.data && (
+                          <pre className="text-gray-600 mt-1 whitespace-pre-wrap leading-tight break-all max-w-[310px] overflow-hidden bg-[#f4f5f6] p-1.5 rounded border border-[#0d1216]">
+                            {log.data}
+                          </pre>
+                        )}
                       </div>
-                      {log.data && (
-                        <pre className="text-gray-600 mt-1 whitespace-pre-wrap leading-tight break-all max-w-[310px] overflow-hidden bg-[#f4f5f6] p-1.5 rounded border border-[#0d1216]">
-                          {log.data}
-                        </pre>
-                      )}
-                    </div>
-                  ))
-                )}
+                    ))
+                  )}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Paused State Screen */}

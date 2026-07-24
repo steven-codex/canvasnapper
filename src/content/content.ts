@@ -566,8 +566,10 @@ function createThumbnail(originalCanvas: HTMLCanvasElement, maxWidth: number): P
 
 // Core function to capture, process, and copy the image
 function captureAndCopyImage(imageUrl: string, width: number, height: number, isSvg: boolean) {
-  chrome.storage.local.get({ history: [], autoDownloadFormat: 'none' }, (res: any) => {
+  chrome.storage.local.get({ session: null, history: [], autoDownloadFormat: 'none' }, (res: any) => {
+    const session = res.session || { tier: 'free' };
     const autoDownloadFormat = res.autoDownloadFormat;
+    const isProOrAdmin = session.tier === 'pro' || session.email?.toLowerCase() === 'stevenallenofc@gmail.com';
 
     logDiagnostic(`Starting capture: ${imageUrl.substring(0, 60)}...`, { width, height, isSvg });
     toast.show("loading", isSvg ? "Snapping vector graphic..." : "Snapping Canva asset...");
@@ -626,7 +628,7 @@ function captureAndCopyImage(imageUrl: string, width: number, height: number, is
               logDiagnostic("Success: Copied assets to clipboard", Object.keys(clipboardItems));
               toast.show("success", `Copied to clipboard! (${finalWidth}x${finalHeight}px)`);
               
-              if (autoDownloadFormat !== 'none') {
+              if (autoDownloadFormat !== 'none' && isProOrAdmin) {
                 const format = autoDownloadFormat;
                 const dataUrl = canvas.toDataURL(format === 'jpeg' ? 'image/jpeg' : 'image/webp', 0.8);
                 
