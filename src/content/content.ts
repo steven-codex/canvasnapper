@@ -628,6 +628,7 @@ function captureAndCopyImage(imageUrl: string, width: number, height: number, is
           if (svgString) {
             clipboardItems["text/plain"] = new Blob([svgString], { type: "text/plain" });
             clipboardItems["text/html"] = new Blob([svgString], { type: "text/html" });
+            clipboardItems["image/svg+xml"] = new Blob([svgString], { type: "image/svg+xml" });
           }
         }
 
