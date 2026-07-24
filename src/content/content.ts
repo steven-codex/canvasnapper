@@ -397,10 +397,6 @@ class SnapperToast {
     
     if (!rootElement.shadowRoot) {
       this.shadow = rootElement.attachShadow({ mode: "open" });
-      
-      const svgFilterStr = `<svg xmlns="http://www.w3.org/2000/svg"><filter id="glass-distortion" x="0%" y="0%" width="100%" height="100%" filterUnits="objectBoundingBox"><feTurbulence type="fractalNoise" baseFrequency="0.001 0.005" numOctaves="1" seed="17" result="turbulence" /><feComponentTransfer in="turbulence" result="mapped"><feFuncR type="gamma" amplitude="1" exponent="10" offset="0.5" /><feFuncG type="gamma" amplitude="0" exponent="1" offset="0" /><feFuncB type="gamma" amplitude="0" exponent="1" offset="0.5" /></feComponentTransfer><feGaussianBlur in="turbulence" stdDeviation="3" result="softMap" /><feSpecularLighting in="softMap" surfaceScale="5" specularConstant="1" specularExponent="100" lightingColor="white" result="specLight"><fePointLight x="-200" y="-200" z="300" /></feSpecularLighting><feComposite in="specLight" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="litImage" /><feDisplacementMap in="SourceGraphic" in2="softMap" scale="200" xChannelSelector="R" yChannelSelector="G" /></filter></svg>`;
-      const svgDataUri = `data:image/svg+xml;base64,${btoa(svgFilterStr)}#glass-distortion`;
-
       const style = document.createElement("style");
       style.textContent = `
         .toast-wrapper {
@@ -408,100 +404,88 @@ class SnapperToast {
           bottom: 80px;
           right: 24px;
           z-index: 2147483647;
-          font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+          font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
           pointer-events: none;
         }
         .toast-card {
           position: relative;
           display: flex;
           align-items: center;
-          min-width: 320px;
-          max-width: 400px;
-          padding: 16px 20px;
-          border-radius: 24px;
-          box-shadow: 0 6px 6px rgba(0, 0, 0, 0.2), 0 0 20px rgba(0, 0, 0, 0.1);
-          color: #111;
-          font-size: 14px;
-          font-weight: 600;
+          min-width: 300px;
+          max-width: 380px;
+          padding: 14px 18px;
+          border-radius: 12px;
+          border: 3px solid #0d1216;
+          box-shadow: 6px 6px 0px 0px #0d1216;
           overflow: hidden;
           opacity: 0;
-          transform: translateY(20px) scale(0.95);
-          transition: all 0.7s cubic-bezier(0.175, 0.885, 0.32, 2.2);
+          transform: translateY(30px) rotate(1deg) scale(0.95);
+          transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.25);
           pointer-events: auto;
           cursor: pointer;
         }
-        .toast-card:hover {
-          padding: 18px 22px;
-          border-radius: 28px;
+        .toast-card.type-loading {
+          background-color: #ffd100;
+          color: #0d1216;
+        }
+        .toast-card.type-success {
+          background-color: #7d2ae7;
+          color: #ffffff;
+        }
+        .toast-card.type-error {
+          background-color: #ff4d4d;
+          color: #ffffff;
         }
         .toast-card.show {
           opacity: 1;
-          transform: translateY(0) scale(1);
-        }
-        .glass-layer-1 {
-          position: absolute;
-          inset: 0;
-          z-index: 0;
-          overflow: hidden;
-          border-radius: inherit;
-          backdrop-filter: blur(3px);
-          -webkit-backdrop-filter: blur(3px);
-          filter: url('${svgDataUri}');
-          isolation: isolate;
-        }
-        .glass-layer-2 {
-          position: absolute;
-          inset: 0;
-          z-index: 10;
-          border-radius: inherit;
-          background: rgba(255, 255, 255, 0.25);
-        }
-        .glass-layer-3 {
-          position: absolute;
-          inset: 0;
-          z-index: 20;
-          overflow: hidden;
-          border-radius: inherit;
-          box-shadow: inset 2px 2px 1px 0 rgba(255, 255, 255, 0.5), inset -1px -1px 1px 1px rgba(255, 255, 255, 0.5);
+          transform: translateY(0) rotate(0deg) scale(1);
         }
         .content-layer {
-          position: relative;
-          z-index: 30;
           display: flex;
           align-items: center;
           gap: 12px;
           width: 100%;
+          font-weight: 900;
+          text-transform: uppercase;
+          font-size: 11px;
+          letter-spacing: 0.5px;
         }
         .icon-container {
           display: flex;
           align-items: center;
           justify-content: center;
-          width: 24px;
-          height: 24px;
+          width: 22px;
+          height: 22px;
           flex-shrink: 0;
         }
         .message-content {
           flex-grow: 1;
           line-height: 1.4;
-          letter-spacing: -0.2px;
         }
-        
         .spinner {
-          width: 20px;
-          height: 20px;
-          border: 2.5px solid #FFE6E8;
-          border-top-color: #E0465C;
+          width: 16px;
+          height: 16px;
+          border: 2.5px solid #0d1216;
+          border-top-color: transparent;
           border-radius: 50%;
-          animation: spin 0.8s cubic-bezier(0.76, 0, 0.24, 1) infinite;
+          animation: spin 0.6s linear infinite;
         }
         @keyframes spin {
           to { transform: rotate(360deg); }
         }
         .success-icon {
-          color: #E0465C;
+          color: #ffd100;
+          background: #0d1216;
+          border-radius: 50%;
+          padding: 2px;
+          border: 1.5px solid #ffffff;
         }
         .error-icon {
-          color: #EF4444;
+          color: #ffffff;
+          background: #0d1216;
+          border-radius: 50%;
+          padding: 2px;
+          border: 1.5px solid #ffffff;
         }
       `;
       this.shadow.appendChild(style);
@@ -522,29 +506,26 @@ class SnapperToast {
     this.container.innerHTML = "";
 
     const card = document.createElement("div");
-    card.className = "toast-card";
+    card.className = `toast-card type-${type}`;
 
     let iconHtml = "";
     if (type === "loading") {
       iconHtml = '<div class="spinner"></div>';
     } else if (type === "success") {
       iconHtml = `
-        <svg class="success-icon" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <svg class="success-icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path>
         </svg>
       `;
     } else {
       iconHtml = `
-        <svg class="error-icon" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <svg class="error-icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
         </svg>
       `;
     }
 
     card.innerHTML = `
-      <div class="glass-layer-1"></div>
-      <div class="glass-layer-2"></div>
-      <div class="glass-layer-3"></div>
       <div class="content-layer">
         <div class="icon-container">${iconHtml}</div>
         <div class="message-content">${message}</div>
@@ -557,8 +538,8 @@ class SnapperToast {
     if (type !== "loading") {
       setTimeout(() => {
         card.classList.remove("show");
-        setTimeout(() => card.remove(), 300);
-      }, 3500);
+        setTimeout(() => card.remove(), 350);
+      }, 3000);
     }
   }
 }
