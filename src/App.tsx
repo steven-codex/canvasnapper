@@ -239,31 +239,7 @@ export default function App() {
           />
         </div>
 
-        {/* Hand-written Doodle Bottom Right with Typing Effect & Clean Upward Curved Arrow */}
-        <div className="absolute bottom-6 right-20 hidden lg:flex flex-col items-center rotate-[4deg] pointer-events-none z-20 min-w-[320px]">
-          <span className="font-hand text-4xl font-bold text-[#7d2ae7] drop-shadow-sm animate-typing-purple pr-2">
-            Instant Alt + C Magic ✨
-          </span>
-          {/* Clean Upward Curved Doodle Arrow pointing directly to the magic callout text */}
-          <svg className="w-14 h-14 text-[#7d2ae7] mt-2 animate-wiggle" viewBox="0 0 100 100" fill="none">
-            {/* Smooth Upward Curve */}
-            <path 
-              d="M50,85 C55,60 45,40 50,22" 
-              stroke="currentColor" 
-              strokeWidth="5.5" 
-              strokeLinecap="round" 
-              className="animate-draw-arrow"
-            />
-            {/* Clean Curved Arrowhead pointing UP */}
-            <path 
-              d="M38,34 L50,18 L62,34" 
-              stroke="currentColor" 
-              strokeWidth="5.5" 
-              strokeLinecap="round" 
-              strokeLinejoin="round"
-            />
-          </svg>
-        </div>
+
 
         <div className="text-center relative z-10">
           <div 
@@ -300,12 +276,40 @@ export default function App() {
               <ChromeIcon className="w-[18px] h-[18px]" />
               Install Chrome Extension
             </a>
-            <a 
-              href="#demo" 
-              className="w-full sm:w-auto px-8 py-4 bg-white text-[#0d1216] border-2 border-[#0d1216] font-mono text-sm font-bold uppercase tracking-wider shadow-[4px_4px_0px_0px_#0d1216] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all duration-150 flex items-center justify-center gap-2 active:scale-95 hover:bg-[#ffd100]"
-            >
-              Try Interactive Workbench ⚡
-            </a>
+            
+            <div className="relative w-full sm:w-auto">
+              <a 
+                href="#demo" 
+                className="w-full sm:w-auto px-8 py-4 bg-white text-[#0d1216] border-2 border-[#0d1216] font-mono text-sm font-bold uppercase tracking-wider shadow-[4px_4px_0px_0px_#0d1216] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all duration-150 flex items-center justify-center gap-2 active:scale-95 hover:bg-[#ffd100] whitespace-nowrap"
+              >
+                Try Interactive Workbench ⚡
+              </a>
+
+              {/* Hand-written Doodle next to the button */}
+              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-6 hidden lg:flex flex-col items-start rotate-[2deg] pointer-events-none z-20 min-w-[280px]">
+                <span className="font-hand text-3xl font-bold text-[#7d2ae7] drop-shadow-sm animate-typing-purple pr-2">
+                  Instant Alt + C Magic ✨
+                </span>
+                {/* Clean Curved Doodle Arrow pointing left-down towards the button */}
+                <svg className="w-12 h-12 text-[#7d2ae7] -mt-1 -ml-4 animate-wiggle" viewBox="0 0 100 100" fill="none">
+                  {/* Curve pointing left-down */}
+                  <path 
+                    d="M80,20 C50,20 30,40 20,60" 
+                    stroke="currentColor" 
+                    strokeWidth="5.5" 
+                    strokeLinecap="round" 
+                  />
+                  {/* Arrowhead pointing left */}
+                  <path 
+                    d="M30,70 L15,60 L25,45" 
+                    stroke="currentColor" 
+                    strokeWidth="5.5" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
+            </div>
           </div>
 
           <div className="inline-flex items-center gap-3 bg-white border-2 border-[#0d1216] px-5 py-3 font-mono text-xs shadow-[5px_5px_0px_0px_#0d1216]">
