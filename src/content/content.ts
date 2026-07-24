@@ -36,6 +36,33 @@ function logDiagnostic(message: string, data?: any) {
   console.log(`[Canva Snapper Diagnostic] ${message}`, data || "");
 }
 
+// Helper to upgrade Canva CDN preview URLs to their original high-resolution source
+function getHighResCanvaUrl(url: string): string {
+  if (!url) return url;
+  
+  // 1. Handle media-public.canva.com paths (e.g. /screen.jpg, /screen_2x.jpg, /thumbnail.jpg -> /original.jpg)
+  const previewPattern = /\/(screen|screen_2x|thumbnail|preview|thumbnail_large|preview_large|mobile|tablet)\.([a-zA-Z0-9]+)(\?.*)?$/i;
+  if (previewPattern.test(url)) {
+    return url.replace(previewPattern, '/original.$2');
+  }
+  
+  // 2. Strip resizing query parameters from generic canvacdn/canva domains
+  try {
+    const urlObj = new URL(url);
+    if (urlObj.hostname.includes('canva.com') || urlObj.hostname.includes('canvacdn.com')) {
+      urlObj.searchParams.delete('width');
+      urlObj.searchParams.delete('height');
+      urlObj.searchParams.delete('size');
+      urlObj.searchParams.delete('scale');
+      return urlObj.toString();
+    }
+  } catch (e) {
+    // Ignore invalid URLs
+  }
+
+  return url;
+}
+
 // Load initial enablement state and listen for changes
 if (isContextValid()) {
   try {
@@ -566,6 +593,7 @@ function createThumbnail(originalCanvas: HTMLCanvasElement, maxWidth: number): P
 
 // Core function to capture, process, and copy the image
 function captureAndCopyImage(imageUrl: string, width: number, height: number, isSvg: boolean) {
+  imageUrl = getHighResCanvaUrl(imageUrl);
   chrome.storage.local.get({ session: null, history: [], autoDownloadFormat: 'none' }, (res: any) => {
     const session = res.session || { tier: 'free' };
     const autoDownloadFormat = res.autoDownloadFormat;
