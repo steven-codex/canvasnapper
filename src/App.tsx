@@ -40,7 +40,7 @@ const PLANS: PlanOption[] = [
     btnBg: 'bg-[#00c4cc]',
     btnText: 'text-[#0d1216]',
     badgeBg: 'bg-[#00c4cc]',
-    icon: '⚡',
+    icon: '/starter_icon.png',
     features: [
       '25 High-Res 4K PNG Snaps',
       'Direct Paste to ChatGPT & Gemini',
@@ -59,7 +59,7 @@ const PLANS: PlanOption[] = [
     btnBg: 'bg-[#7d2ae7]',
     btnText: 'text-white',
     badgeBg: 'bg-[#E01E5A]',
-    icon: '🚀',
+    icon: '/creator_icon.png',
     highlight: true,
     badge: 'Popular Choice',
     originalPrice: '$10.99',
@@ -82,7 +82,7 @@ const PLANS: PlanOption[] = [
     btnBg: 'bg-[#0d1216]',
     btnText: 'text-white',
     badgeBg: 'bg-[#7d2ae7]',
-    icon: '👑',
+    icon: '/lifetime_icon.png',
     highlight: true,
     badge: 'Best Value',
     originalPrice: '$29.99',
@@ -857,7 +857,9 @@ export default function App() {
                   <span className="font-mono text-xs font-black uppercase text-[#0d1216]/70 tracking-wider">
                     {plan.snaps}
                   </span>
-                  <span className="text-2xl group-hover:scale-125 transition-transform">{plan.icon}</span>
+                  <span className="group-hover:scale-110 transition-transform">
+                    <img src={plan.icon} alt={plan.name} className="w-14 h-14 object-contain filter drop-shadow-[2px_2px_0px_rgba(13,18,22,1)]" />
+                  </span>
                 </div>
                 <h3 className="font-mono text-2xl font-black uppercase tracking-tight text-[#0d1216]">
                   {plan.name}
