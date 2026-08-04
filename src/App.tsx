@@ -796,28 +796,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* Card 6: Real-Time Diagnostic Stream */}
-          <div className="group bg-white text-[#0d1216] border-2 border-[#0d1216] rounded-2xl p-7 shadow-[6px_6px_0px_0px_#0d1216] hover:shadow-[10px_10px_0px_0px_#ffd100] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between cursor-pointer">
-            <div>
-              <div className="w-11 h-11 bg-[#fff8e1] border-2 border-[#0d1216] rounded-xl flex items-center justify-center text-[#ff8f00] mb-5 shadow-[2.5px_2.5px_0px_0px_#0d1216] group-hover:scale-110 transition-transform">
-                <Info size={20} />
-              </div>
-              <h3 className="font-mono text-xl font-black uppercase tracking-tight mb-2 text-[#0d1216]">
-                Diagnostic Live Stream
-              </h3>
-              <p className="font-sans text-sm text-[#4b5563] leading-relaxed mb-6 font-medium">
-                Built-in real-time stream logs that trace asset extraction resolution, canvas dimensions, and network status.
-              </p>
-            </div>
-
-            {/* Graphic Preview: Diagnostic Log Stream */}
-            <div className="bg-[#f9fafb] border-2 border-[#0d1216] rounded-xl p-3 relative min-h-[140px] flex items-center justify-center">
-              <div className="w-full bg-[#e0f7fa] border-2 border-[#0d1216] rounded-lg p-2.5 font-mono text-[9px] text-[#0d1216] shadow-[2px_2px_0px_0px_#0d1216]">
-                <div className="font-extrabold text-[#7d2ae7]">[19:35:10] Snap extracted successfully</div>
-                <div className="text-[#6f767e] font-bold text-[8px] mt-0.5">&gt; Resolution: 4K Ultra HD PNG</div>
-              </div>
-            </div>
-          </div>
 
         </div>
       </section>
