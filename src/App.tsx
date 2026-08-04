@@ -847,8 +847,17 @@ export default function App() {
                 plan.highlight ? 'shadow-[8px_8px_0px_0px_#0d1216] md:-translate-y-2' : 'shadow-[5px_5px_0px_0px_#0d1216]'
               } hover:shadow-[10px_10px_0px_0px_#0d1216] hover:-translate-y-2 group`}
             >
+              {/* Overlapping AI Icon */}
+              <div className="absolute -top-12 -left-6 z-10 w-24 h-24 group-hover:scale-110 group-hover:-rotate-6 transition-all duration-300 pointer-events-none">
+                <img 
+                  src={plan.icon} 
+                  alt={plan.name} 
+                  className="w-full h-full object-contain filter drop-shadow-[3px_3px_0px_rgba(13,18,22,1)]" 
+                />
+              </div>
+
               {plan.badge && (
-                <span className={`absolute -top-4 right-6 ${plan.badgeBg} text-white border-2 border-[#0d1216] font-mono text-[10px] uppercase tracking-wider font-black px-3 py-1 rounded-full shadow-[2px_2px_0px_0px_#0d1216]`}>
+                <span className={`absolute -top-4 right-6 ${plan.badgeBg} text-white border-2 border-[#0d1216] font-mono text-[10px] uppercase tracking-wider font-black px-3 py-1 rounded-full shadow-[2px_2px_0px_0px_#0d1216] z-10`}>
                   {plan.badge}
                 </span>
               )}
@@ -857,11 +866,8 @@ export default function App() {
                   <span className="font-mono text-xs font-black uppercase text-[#0d1216]/70 tracking-wider">
                     {plan.snaps}
                   </span>
-                  <span className="group-hover:scale-110 transition-transform">
-                    <img src={plan.icon} alt={plan.name} className="w-14 h-14 object-contain filter drop-shadow-[2px_2px_0px_rgba(13,18,22,1)]" />
-                  </span>
                 </div>
-                <h3 className="font-mono text-2xl font-black uppercase tracking-tight text-[#0d1216]">
+                <h3 className="font-mono text-2xl font-black uppercase tracking-tight text-[#0d1216] mt-4">
                   {plan.name}
                 </h3>
                 <div className="my-6 flex items-baseline gap-2">
