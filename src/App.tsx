@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Zap, Star, Copy, ArrowUpRight, Download, Layers, Info } from 'lucide-react';
+import { Zap, Star, Copy, ArrowUpRight, Download, Layers } from 'lucide-react';
 
 // Custom Chrome SVG Icon to avoid version mismatch in lucide-react
 const ChromeIcon = (props: React.SVGProps<SVGSVGElement>) => (
